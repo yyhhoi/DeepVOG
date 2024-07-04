@@ -7,7 +7,7 @@ from deepvog.draw_ellipse import fit_ellipse
 
 class TestDrawEllipse(unittest.TestCase):
 
-    def test_isolate_islands(self):
+    def test_fit_ellipse(self):
         test_data = np.load('test/test_data/testdata_draw_ellipse.npz', allow_pickle=True)
         
         test_inputs = test_data['input'][()]
