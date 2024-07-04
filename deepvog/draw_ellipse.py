@@ -1,3 +1,13 @@
+"""
+File: draw_ellise.py
+Author: Yuk-Hoi Yiu
+Description: 
+    This script contain functions that find and fit an ellipse from an image, and return pixel indexes for drawing.
+    The steps are outlined in Yiu et al., 2019 (Figure 3).
+Usage:
+    To fit an ellipse, use the function "fit_ellipse(img, threshold, color, mask)". 
+"""
+
 import numpy as np
 import matplotlib as mpl
 from skimage.measure import label, regionprops
@@ -5,9 +15,25 @@ from skimage.morphology import closing, square
 from .bwperim import bwperim
 from .ellipses import LSqEllipse #The code is pulled frm https://github.com/bdhammel/least-squares-ellipse-fitting
 from skimage.draw import ellipse_perimeter
+from numpy.typing import NDArray as npt
 
+def isolate_islands(prediction: npt, threshold: float) -> npt:
+    """The function takes in the pixel-wise classification results (a 2D image), closes small gaps, isolates connected regions,
+    finds the region with the largest area, and determines such a region as the pupil ellipse.
 
-def isolate_islands(prediction, threshold):
+    Parameters
+    ----------
+    prediction : ndarray
+        (240, 320) with float [0, 1]. Pixel-wise classification probabilities of a pupile region.
+    threshold : float
+        Threshold between [0, 1] to decide if the pixel is part of the pupil.
+
+    Returns
+    -------
+    output : ndarray
+        A boolean image with shape (240, 320) with 1's marking the pupile region and 0's otherwise.
+    """
+
     bw = closing(prediction > threshold , square(3))
     labelled = label(bw)  
     regions_properties = regionprops(labelled)
@@ -25,7 +51,33 @@ def isolate_islands(prediction, threshold):
         return output
 
 # input: output from bwperim -- 2D image with perimeter of the ellipse = 1
-def gen_ellipse_contour_perim(perim, color = "r"): 
+def gen_ellipse_contour_perim(perim: npt, color: str = "r") -> tuple | None: 
+    """Compute ellipse parameters from a boolean image with 1's marking the ellipse perimenter and 0's otherwise.
+    
+
+    Parameters
+    ----------
+    perim : ndarray
+        A boolean image of shape (240, 320) with 1's marking the ellipse perimenter and 0's otherwise.
+        It should be the output from the function bwperim.
+    color : str, optional
+        Color to be drawn on the ellipse perimeter., by default "r"
+
+    Returns
+    -------
+    rr, cc: ndarray
+        indexes of pixels that form the ellipse perimeter, such that img[rr, cc] are the ellipse pixels
+    center: list 
+        [x0, y0] in the np indexing frame
+    w, h: float
+        major and minor axes of the ellipse
+    radian: float
+        Orientation of the ellipse (clockwise)
+    ell: mpl.patches.Ellipse
+        Object for plotting in matplotlib
+    None: 
+        If no ellipse is found, only None is output instead of the tuple (rr, cc, center, w, h, radian, ell).
+    """
     # Vertices
     input_points = np.where(perim == 1)
     if (np.unique(input_points[0]).shape[0]) < 6 or (np.unique(input_points[1]).shape[0]< 6) :
@@ -44,32 +96,47 @@ def gen_ellipse_contour_perim(perim, color = "r"):
         except:
             return None
 
-def gen_ellipse_contour_perim_compact(perim): 
-    # Vertices
-    input_points = np.where(perim == 1)
-    if (np.unique(input_points[0]).shape[0]) < 6 or (np.unique(input_points[1]).shape[0]< 6) :
-        return None
-    else:
-        try:
-            vertices = np.array([input_points[0], input_points[1]]).T
-            # Contour
-            fitted = LSqEllipse()
-            fitted.fit([vertices[:,1], vertices[:,0]])
-            center, w,h, radian = fitted.parameters()
-            # Because of the np indexing of y-axis, orientation needs to be minus
-            return (center, w,h, radian)
-        except:
-            return None
 
-def fit_ellipse(img, threshold = 0.5, color = "r", mask=None):
+def fit_ellipse(img: npt, threshold: float = 0.5, color: str = "r", mask: npt | None = None) -> tuple | None:
+    """Fitting an ellipse to the pixels which form the largest connected area.
+
+    Parameters
+    ----------
+    img : ndarray
+        Pupil classification probabilities from the DeepVOG network. 
+        Shape=(240, 320). float [0, 1]
+    threshold : float, optional
+        Thresold for the pixels to be classified as pupil, by default 0.5
+    color : str, optional
+        Pixel color for drawing the pupil ellipse boundary, by default "r"
+    mask : ndarray or None, optional
+        Mask to zero out low-confidence pixel/regions.
+        If ndarray, a mask with float value [0, 1] with the same shape as img. Values < 0.5 will be assigned 0. 
+        If None, the argument is ignored. By default None.
+
+    Returns
+    -------
+    rr, cc: ndarray
+        indexes of pixels that form the ellipse perimeter, such that img[rr, cc] are the ellipse pixels
+    center: list 
+        [x0, y0] in the np indexing frame
+    w, h: float
+        major and minor axes of the ellipse
+    radian: float
+        Orientation of the ellipse (clockwise)
+    ell: mpl.patches.Ellipse
+        Object for plotting in matplotlib
+    None: 
+        If no ellipse is found, only None is output instead of the tuple (rr, cc, center, w, h, radian, ell).
+
+    """    
 
     isolated_pred = isolate_islands(img, threshold = threshold)
     perim_pred = bwperim(isolated_pred)
 
     # masking eyelid away from bwperim_output. Currently not available in DeepVOG (But will be used in DeepVOG-3D)
     if mask is not None:
-        mask_bool = mask < 0.5
-        perim_pred[mask_bool] = 0
+        perim_pred[mask < 0.5] = 0
 
     # masking bwperim_output on the img boundaries as 0 
     perim_pred[0, :] = 0
@@ -80,31 +147,17 @@ def fit_ellipse(img, threshold = 0.5, color = "r", mask=None):
 
     return ellipse_info
 
-def fit_ellipse_compact(img, threshold = 0.5, mask=None):
-    """Fitting an ellipse to the thresholded pixels which form the largest connected area.
 
-    Args:
-        img (2D numpy array): Prediction from the DeepVOG network (240, 320), float [0,1]
-        threshold (scalar): thresholding pixels for fitting an ellipse
-        mask (2D numpy array): Prediction from DeepVOG-3D network for eyelid region (240, 320), float [0,1].
-                                intended for masking away the eyelid such as the fitting is better
-    Returns:
-        ellipse_info (tuple): A tuple of (center, w, h, radian), center is a list [x-coordinate, y-coordinate] of the ellipse centre. 
-                                None is returned if no ellipse can be found.
-    """
-    isolated_pred = isolate_islands(img, threshold = threshold)
-    perim_pred = bwperim(isolated_pred)
+if __name__ == '__main__':
 
-    # masking eyelid away from bwperim_output. Currently not available in DeepVOG (But will be used in DeepVOG-3D)
-    if mask is not None:
-        mask_bool = mask < 0.5
-        perim_pred[mask_bool] = 0
+    test_prediction = np.load('deepvog/test_model_prediction.npy')
 
-    # masking bwperim_output on the img boundaries as 0 
-    perim_pred[0, :] = 0
-    perim_pred[perim_pred.shape[0]-1, :] = 0
-    perim_pred[:, 0] = 0
-    perim_pred[:, perim_pred.shape[1]-1] = 0
-    
-    ellipse_info = gen_ellipse_contour_perim_compact(perim_pred)
-    return ellipse_info
+    rr, cc, center, w, h, radian, ell = fit_ellipse(test_prediction[0, :, :, 1])
+
+    breakpoint()
+
+    np.savez('testdata_draw_ellipse.npz', 
+             input = {'img':test_prediction[0, :, :, 1],
+                      'threshold':0.5, 'color':'r', 'mask':None}, 
+             output = {'rr':rr, 'cc':cc, 'center':center, 'w':w, 'h':h, 'radian':radian}
+             )

@@ -5,9 +5,9 @@ import os
 import numpy as np
 
 # Add the lib directory to the system path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'deepvog')))
-from unprojection import unprojectGazePositions, convert_ell_to_general, reproject, reverse_reproject
-
+# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'deepvog')))
+# from unprojection import unprojectGazePositions, convert_ell_to_general, reproject, reverse_reproject
+from deepvog.unprojection import unprojectGazePositions, convert_ell_to_general, reproject, reverse_reproject
 
 class TestUnrojection(unittest.TestCase):
 

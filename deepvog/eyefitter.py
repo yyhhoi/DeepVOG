@@ -1,13 +1,13 @@
 import numpy as np
 import pdb
-from .draw_ellipse import fit_ellipse_compact, fit_ellipse
+from .draw_ellipse import fit_ellipse
 from .unprojection import convert_ell_to_general, unprojectGazePositions, reproject, reverse_reproject
 from .intersection import NoIntersectionError, intersect, fit_ransac, line_sphere_intersect
 from .CheckEllipse import computeEllipseConfidence
 
 """
 Unless specified, all units are in pixels. 
-All calculations are in camera frame (conversion would be commented)
+All calculations are in camera frame (conversion would be noted in comment)
 
 """
 

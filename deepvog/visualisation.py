@@ -2,6 +2,13 @@ from skimage.draw import ellipse_perimeter, line, circle_perimeter, line_aa
 import skvideo.io as skv
 import numpy as np
 
+# ===========================================
+# TODO: skv should be replaced by opencv.
+# The latest package of scikit-video (1.1.11) still uses np.foat and np.int, which are deprecated after numpy 1.20, causing error.
+# These two lines are the temporary fix.
+np.float = np.float64
+np.int = np.int_
+# ===========================================
 
 def draw_line(output_frame, frame_shape, o, l, color=[255, 0, 0]):
     """

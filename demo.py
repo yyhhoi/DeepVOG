@@ -1,0 +1,25 @@
+import deepvog
+
+# Load our pre-trained network
+model = deepvog.load_DeepVOG()
+
+focal_length = 12
+video_shape = (240, 320)
+sensor_size = (3.6, 4.8)
+
+# Initialize the class. It requires information of your camera's focal length and sensor size, which should be available in product manual.
+inferer = deepvog.gaze_inferer(model, focal_length, video_shape, sensor_size) 
+
+# Fit an eyeball model from "demo.mp4". The model will be stored as the "inferer" instance's attribute.
+inferer.process("demo/demo.mp4", mode="Fit", batch_size=2)
+
+# After fitting, infer gaze from "demo.mp4" and output the results into "demo_result.csv"
+inferer.process("demo/demo.mp4", mode="Infer", output_record_path="demo_results.csv", batch_size=2)
+
+# Optional
+
+# You may also save the eyeball model to "demo_model.json" for subsequent gaze inference
+inferer.save_eyeball_model("demo/demo_model.json") 
+
+# By loading the eyeball model, you don't need to fit the model again
+inferer.load_eyeball_model("demo/demo_model.json") 

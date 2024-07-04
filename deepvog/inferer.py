@@ -9,6 +9,13 @@ from .eyefitter import SingleEyeFitter
 from .utils import save_json, load_json, convert_vec2angle31
 from .visualisation import draw_circle, draw_ellipse, draw_line, VideoManager
 
+# ===========================================
+# TODO: skv should be replaced by opencv.
+# The latest package of scikit-video (1.1.11) still uses np.foat and np.int, which are deprecated after numpy 1.20, causing error.
+# These two lines are just temporary fix.
+np.float = np.float64
+np.int = np.int_
+# ===========================================
 
 class gaze_inferer(object):
     def __init__(self, model, flen, ori_video_shape, sensor_size, infer_gaze_flag=True):
