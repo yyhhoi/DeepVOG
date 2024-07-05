@@ -117,7 +117,7 @@ def fit_ellipse(img: npt, threshold: float = 0.5, color: str = "r", mask: npt | 
     Returns
     -------
     rr, cc: ndarray
-        indexes of pixels that form the ellipse perimeter, such that img[rr, cc] are the ellipse pixels
+        1d-array of indexes (int64) of pixels that form the ellipse perimeter, such that img[rr, cc] are the ellipse pixels
     center: list 
         [x0, y0] in the np indexing frame
     w, h: float
@@ -154,10 +154,12 @@ if __name__ == '__main__':
 
     rr, cc, center, w, h, radian, ell = fit_ellipse(test_prediction[0, :, :, 1])
 
-    breakpoint()
 
-    np.savez('testdata_draw_ellipse.npz', 
-             input = {'img':test_prediction[0, :, :, 1],
-                      'threshold':0.5, 'color':'r', 'mask':None}, 
-             output = {'rr':rr, 'cc':cc, 'center':center, 'w':w, 'h':h, 'radian':radian}
-             )
+    np.savez('test/test_data/testdata_draw_ellipse.npz', 
+             input_img = test_prediction[0, :, :, 1],
+             output_rr = rr,
+             output_cc = cc,
+             output_center = center,
+             output_w = w,
+             output_h = h,
+             output_radian = radian,)

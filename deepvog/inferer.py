@@ -342,7 +342,7 @@ class gaze_inferer(object):
         Args:
             img (numpy array): unprocessed image with shape (w, h, 3) and values int [0, 255]
         Returns:
-            output_img (numpy array): processed grayscale image with shape ( 240, 320, 1) and values float [0,1]
+            output_img (numpy array): processed grayscale image with shape (240, 320, 3) and values float [0,1]
         """
         output_img = np.zeros((240, 320, 3))
         img = img / 255
