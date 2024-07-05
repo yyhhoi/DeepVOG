@@ -54,7 +54,7 @@ class gaze_inferer(object):
                                          initial_eye_z=50 * self.mm2px_scaling)
         self.infer_gaze_flag = infer_gaze_flag
     def process(self, video_src, mode, output_record_path="", batch_size=32,
-                output_video_path="", heatmap=False, print_prefix=""):
+                output_video_path="", heatmap=False, print_prefix="", ransac=True):
         """
 
         Parameters
@@ -149,7 +149,7 @@ class gaze_inferer(object):
 
         if mode == "Fit":
             # Fit eyeball models. Parameters are stored as internal attributes of Eyefitter instance.
-            _ = self.eyefitter.fit_projected_eye_centre(ransac=True, max_iters=100, min_distance=10*vid_m)
+            _ = self.eyefitter.fit_projected_eye_centre(ransac=ransac, max_iters=100, min_distance=10*vid_m)
             _, _ = self.eyefitter.estimate_eye_sphere()
 
             # Issue error if eyeball model still does not exist after fitting.

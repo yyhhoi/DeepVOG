@@ -1,10 +1,9 @@
 import numpy as np
-import pdb
 from .draw_ellipse import fit_ellipse
 from .unprojection import convert_ell_to_general, unprojectGazePositions, reproject, reverse_reproject
 from .intersection import NoIntersectionError, intersect, fit_ransac, line_sphere_intersect
 from .CheckEllipse import computeEllipseConfidence
-
+from .utils import convert_vec2angle31
 """
 Unless specified, all units are in pixels. 
 All calculations are in camera frame (conversion would be noted in comment)
@@ -241,6 +240,15 @@ class SingleEyeFitter(object):
             return [new_position_min, new_position_max], [new_gaze_min, new_gaze_max], [new_radius_min,
                                                                                         new_radius_max], consistence
 
+    def calc_gaze(self, p_list, n_list):
+        p1, n1 = p_list[0], n_list[0]
+        px, py, pz = p1[0, 0], p1[1, 0], p1[2, 0]
+        x, y = convert_vec2angle31(n1)
+        positions = (px, py, pz)  # Pupil 3D positions and 2D projected positions
+        gaze_angles = (x, y)  # horizontal and vertical gaze angles
+        return positions, gaze_angles
+
+
     def plot_gaze_lines(self, ax):
         t = np.linspace(-1000, 1000, 1000)
         a = np.vstack((self.ellipse_centres, self.ellipse_centres))
@@ -332,8 +340,23 @@ if __name__ == '__main__':
     # _ = eyefitter.fit_projected_eye_centre(ransac=True, max_iters=5000, min_distance=10*vid_m*20)
     _ = eyefitter.fit_projected_eye_centre(ransac=False)
     _, _ = eyefitter.estimate_eye_sphere()
-    
     print('Projected eye center\n', eyefitter.projected_eye_centre)
     print('3D Eye center\n', eyefitter.eye_centre)
     print('Eye radius\n', eyefitter.aver_eye_radius)
+
+    # # Test data for test_calc_gaze
+    testdata = np.zeros((vid_m, 8))
+    for i in range(vid_m):
+        _, _, _, _, ellipse_info = eyefitter.unproject_single_observation(predictions[i, ...])
+        (rr, cc, centre, w, h, radian, ellipse_confidence) = ellipse_info
+        if (centre is not None):
+            p_list, n_list, _, consistence = eyefitter.gen_consistent_pupil()
+            positions, gaze_angles = eyefitter.calc_gaze(p_list=p_list, n_list=n_list)
+            testdata[i, :] = np.array(list(positions) + centre + list(gaze_angles) + [consistence * 1.0])
+    np.save('test/test_data/testdata_calc_gaze.npy', testdata)
+
+
+
+
+
     

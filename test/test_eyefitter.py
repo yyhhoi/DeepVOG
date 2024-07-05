@@ -46,7 +46,6 @@ class TestSingleEyeFitter(unittest.TestCase):
         # RANSAC is not tested here. It is too noisy for comparing output values.
         _ = self.eyefitter.fit_projected_eye_centre(ransac=False)
         _, _ = self.eyefitter.estimate_eye_sphere()
-        
         expected_projected_eye_centre = np.array([[129.73336792],[135.15884813]])
         expected_eye_centre = np.array([[-126.11096699], [  63.16186721], [3333.33333333]])
         expected_aver_eye_radius = 731.2955387299593
@@ -54,6 +53,17 @@ class TestSingleEyeFitter(unittest.TestCase):
         np.testing.assert_array_almost_equal(self.eyefitter.eye_centre, expected_eye_centre, decimal=6)
         self.assertAlmostEqual(self.eyefitter.aver_eye_radius, expected_aver_eye_radius)
 
+        # # Test gaze estimation
+        expected_gazeinfos = np.load('test/test_data/testdata_calc_gaze.npy')
+        gazeinfos = np.zeros((vid_m, 8))
+        for i in range(vid_m):
+            _, _, _, _, ellipse_info = self.eyefitter.unproject_single_observation(predictions[i, ...])
+            (rr, cc, centre, w, h, radian, ellipse_confidence) = ellipse_info
+            if (centre is not None):
+                p_list, n_list, _, consistence = self.eyefitter.gen_consistent_pupil()
+                positions, gaze_angles = self.eyefitter.calc_gaze(p_list=p_list, n_list=n_list)
+                gazeinfos[i, :] = np.array(list(positions) + centre + list(gaze_angles) + [consistence * 1.0])
+        np.testing.assert_array_almost_equal(gazeinfos, expected_gazeinfos, decimal=6)
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

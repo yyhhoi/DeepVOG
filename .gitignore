@@ -1,3 +1,4 @@
 *.ipynb
 */__pycache__
 deepvog/model/__pycache__
+gen_test_data.py
