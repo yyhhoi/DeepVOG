@@ -67,7 +67,7 @@ def decoding_block(X, filter_size, filters_num, layer_num, block_type, stage, s 
 # FullVnet
 # Output layers have 3 channels. The first two channels represent two one-hot vectors (pupil and non-pupil)
 # The third layer contains all zeros in all cases (trivial)
-def DeepVOG_net(input_shape = (240, 320, 3), filter_size= (3,3)):
+def DeepVOG_net(input_shape = (240, 320, 3), filter_size= (10, 10)):
     
     X_input = Input(input_shape)
     
@@ -104,6 +104,6 @@ def DeepVOG_net(input_shape = (240, 320, 3), filter_size= (3,3)):
 
 def load_DeepVOG():
     base_dir = os.path.dirname(__file__)
-    model = DeepVOG_net(input_shape = (240, 320, 3), filter_size= (10,10))
+    model = DeepVOG_net()
     model.load_weights(os.path.join(base_dir, "DeepVOG_weights.h5"))
     return model
