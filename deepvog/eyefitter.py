@@ -41,13 +41,6 @@ class SingleEyeFitter(object):
         self.eye_centre = None  # reserved for (3,1) numpy array. 3D centre coordinate in camera frame
         self.aver_eye_radius = None  # Scaler
 
-        # Results of consistent pupil estimate
-        self.pupil_new_position_max = None  # numpy array (3,1)
-        self.pupil_new_position_min = None  # numpy array (3,1)
-        self.pupil_new_radius_max = None  # scalar
-        self.pupil_new_radius_min = None  # scalar
-        self.pupil_new_gaze_max = None  # numpy array (3,1)
-        self.pupil_new_gaze_min = None  # numpy array (3,1)
 
     def unproject_single_observation(self, prediction, mask=None, threshold=0.5):
         # "prediction" is an numpy array with shape (image_height, image_width) and data type: float [0-1]
@@ -202,51 +195,40 @@ class SingleEyeFitter(object):
         self.eye_centre = eye_centre_camera_frame
         return aver_radius, radius_counter
 
-    def gen_consistent_pupil(self):
-        # This function must be called after using unproject_single_observation() to update surrent observation
+    def estimate_gaze(self):
+        # This function must be called after using unproject_single_observation() to update current observation
         if (self.eye_centre is None) or (self.aver_eye_radius is None):
             raise TypeError("Call estimate_eye_sphere() to initialize eye_centre and eye_radius first.")
-        else:
-            selected_gaze, selected_position = self.select_pupil_from_single_observation(
-                [self.current_gaze_pos, self.current_gaze_neg],
-                [self.current_pupil_3Dcentre_pos, self.current_pupil_3Dcentre_neg], self.eye_centre)
+
+        selected_gaze, selected_position = self.select_pupil_from_single_observation(
+            [self.current_gaze_pos, self.current_gaze_neg],
+            [self.current_pupil_3Dcentre_pos, self.current_pupil_3Dcentre_neg], self.eye_centre)
+        
+
+        # Perform line-sphere intersection to find the pupil position, radius, gaze vector
+        try:
             o = np.zeros((3, 1))
+            d1, d2 = line_sphere_intersect(self.eye_centre, self.aver_eye_radius, o,
+                                            selected_position / np.linalg.norm(selected_position))
+            d = min([d1, d2])  # Choose the minimum intersection (closest to the camera)
 
-            try:
-                d1, d2 = line_sphere_intersect(self.eye_centre, self.aver_eye_radius, o,
-                                               selected_position / np.linalg.norm(selected_position))
-                new_position_min = o + min([d1, d2]) * (selected_position / np.linalg.norm(selected_position))
-                new_position_max = o + max([d1, d2]) * (selected_position / np.linalg.norm(selected_position))
-                new_radius_min = (self.pupil_radius / selected_position[2, 0]) * new_position_min[2, 0]
-                new_radius_max = (self.pupil_radius / selected_position[2, 0]) * new_position_max[2, 0]
+            pos = o + d * (selected_position / np.linalg.norm(selected_position))
+            radius = (self.pupil_radius / selected_position[2, 0]) * pos[2, 0]
+            gaze_vec = pos - self.eye_centre
+            gaze_vec = gaze_vec / np.linalg.norm(gaze_vec)
+            consistence = True
 
-                new_gaze_min = new_position_min - self.eye_centre
-                new_gaze_min = new_gaze_min / np.linalg.norm(new_gaze_min)
+        except(NoIntersectionError):
+            # print("Cannot find line-sphere interception. Old pupil parameters are used.")
+            pos = selected_position
+            gaze_vec = selected_gaze
+            radius = self.pupil_radius
+            consistence = False
 
-                new_gaze_max = new_position_max - self.eye_centre
-                new_gaze_max = new_gaze_max / np.linalg.norm(new_gaze_max)
-                self.pupil_new_position_min, self.pupil_new_position_max = new_position_min, new_position_max
-                self.pupil_new_radius_min, self.pupil_new_radius_max = new_radius_min, new_radius_max
-                self.pupil_new_gaze_min, self.pupil_new_gaze_max = new_gaze_min, new_gaze_max
-                consistence = True
+        pos_xyz = (pos[0, 0], pos[1, 0], pos[2, 0])  # -> tuple, (x, y, z)
+        gaze_angles = convert_vec2angle31(gaze_vec)  # -> tuple, (x_angle, y_angle)
+        return pos_xyz, gaze_angles, gaze_vec, consistence
 
-            except(NoIntersectionError):
-                # print("Cannot find line-sphere interception. Old pupil parameters are used.")
-                new_position_min, new_position_max = selected_position, selected_position
-                new_gaze_min, new_gaze_max = selected_gaze, selected_gaze
-                new_radius_min, new_radius_max = self.pupil_radius, self.pupil_radius
-                consistence = False
-
-            return [new_position_min, new_position_max], [new_gaze_min, new_gaze_max], [new_radius_min,
-                                                                                        new_radius_max], consistence
-
-    def calc_gaze(self, p_list, n_list):
-        p1, n1 = p_list[0], n_list[0]
-        px, py, pz = p1[0, 0], p1[1, 0], p1[2, 0]
-        x, y = convert_vec2angle31(n1)
-        positions = (px, py, pz)  # Pupil 3D positions and 2D projected positions
-        gaze_angles = (x, y)  # horizontal and vertical gaze angles
-        return positions, gaze_angles
 
 
     def plot_gaze_lines(self, ax):

@@ -8,7 +8,7 @@ from .unprojection import reproject
 from .eyefitter import SingleEyeFitter
 from .utils import save_json, load_json, convert_vec2angle31
 from .visualisation import draw_circle, draw_ellipse, draw_line, VideoManager
-
+from numpy.typing import NDArray as npt
 # ===========================================
 # TODO: skv should be replaced by opencv.
 # The latest package of scikit-video (1.1.11) still uses np.foat and np.int, which are deprecated after numpy 1.20, causing error.
@@ -19,20 +19,29 @@ np.int = np.int_
 
 class gaze_inferer(object):
     def __init__(self, model, flen, ori_video_shape, sensor_size, infer_gaze_flag=True):
-        """
-        Initialize necessary parameters and load deep_learning model
+        """Initialize necessary parameters for eye-sphere fitting, gaze inference and load the network model.
 
-        Args:
-            model: Deep learning model that perform image segmentation. Pre-trained model is provided at https://github.com/pydsgz/DeepVOG/model/DeepVOG_model.py, simply by loading load_DeepVOG() with "DeepVOG_weights.h5" in the same directory. If you use your own model, it should take input of grayscale image (m, 240, 320, 3) with value float [0,1] and output (m, 240, 320, 3) with value float [0,1] where (m, 240, 320, 1) is the pupil map.
+        Parameters
+        ----------
+        model : keras.model
+            Deep learning model that perform image segmentation. Pre-trained model is provided at https://github.com/pydsgz/DeepVOG/model/DeepVOG_model.py, simply by loading load_DeepVOG() with "DeepVOG_weights.h5" in the same directory. 
+            The model should take input of grayscale image (m, 240, 320, 3) with value float [0,1] and output (m, 240, 320, 3) with value float [0,1] where (m, 240, 320, 1) is the pupil map.
+        flen : float
+            Focal length of camera in mm. You can look it up at the product menu of your camera
+        ori_video_shape : tuple or list or ndarray
+            Original video shape from your camera video, (height, width) in pixel. If you cropped the video before, use the "original" shape but not the cropped shape. Video will be automatically resized to 240, 320 before feeding to the model.
+        sensor_size : tuple or list or ndarray
+            Sensor size of your camera, (height, width) in mm. For 1/3 inch CMOS sensor, it should be (3.6, 4.8). Further reference can be found in https://en.wikipedia.org/wiki/Image_sensor_format and you can look up in your camera product menu
+        infer_gaze_flag : bool, optional
+            Enter False if you do not want to infer gaze direction (when you only perform pupil segmentation). By default True.
 
-            flen (float): Focal length of camera in mm. You can look it up at the product menu of your camera
+        Raises
+        ------
+        TypeError
+            _description_
+        """        
 
-            ori_video_shape (tuple or list or np.ndarray): Original video shape from your camera, (height, width) in pixel. If you cropped the video before, use the "original" shape but not the cropped shape
 
-            sensor_size (tuple or list or np.ndarray): Sensor size of your camera, (height, width) in mm. For 1/3 inch CMOS sensor, it should be (3.6, 4.8). Further reference can be found in https://en.wikipedia.org/wiki/Image_sensor_format and you can look up in your camera product menu
-
-
-        """
         # Assertion of shape
         try:
             assert isinstance(flen, (int, float))
@@ -53,6 +62,7 @@ class gaze_inferer(object):
                                          pupil_radius=2 * self.mm2px_scaling,
                                          initial_eye_z=50 * self.mm2px_scaling)
         self.infer_gaze_flag = infer_gaze_flag
+
     def process(self, video_src, mode, output_record_path="", batch_size=32,
                 output_video_path="", heatmap=False, print_prefix="", ransac=True):
         """
@@ -245,15 +255,11 @@ class gaze_inferer(object):
 
             # If ellipse fitting is successful, i.e. an ellipse is located, AND gaze inference is ENABLED
             if (centre is not None) and self.infer_gaze_flag:
-                p_list, n_list, _, consistence = self.eyefitter.gen_consistent_pupil()
-                p1, n1 = p_list[0], n_list[0]
-                px, py, pz = p1[0, 0], p1[1, 0], p1[2, 0]
-                x, y = convert_vec2angle31(n1)
-                positions = (px, py, pz, centre[0], centre[1])  # Pupil 3D positions and 2D projected positions
-                gaze_angles = (x, y)  # horizontal and vertical gaze angles
+
+                pos_xyz, gaze_angles, gaze_vec, consistence = self.eyefitter.estimate_gaze()
                 inference_confidence = (ellipse_confidence, consistence)
-                self.vid_manager.write_results(frame_id=frame, pupil2D_x=centre[0], pupil2D_y=centre[1], gaze_x=x,
-                                               gaze_y=y, confidence=ellipse_confidence, consistence=consistence)
+                self.vid_manager.write_results(frame_id=frame, pupil2D_x=centre[0], pupil2D_y=centre[1], gaze_x=gaze_angles[0],
+                                               gaze_y=gaze_angles[1], confidence=ellipse_confidence, consistence=consistence)
 
                 if self.vid_manager.output_video_flag:
                     # # Code below is for drawing video
@@ -266,13 +272,13 @@ class gaze_inferer(object):
                     projected_eye_centre += np.array(vid_frame_shape_2d[::-1]).reshape(-1, 1) / 2
 
                     vid_frame = self._draw_vis_on_frame(vid_frame, vid_frame_shape_2d, ellipse_info, ellipse_centre_np,
-                                                        projected_eye_centre, gaze_vec=n1)
+                                                        projected_eye_centre, gaze_vec=gaze_vec)
 
                     self.vid_manager.write_frame_with_condition(vid_frame=vid_frame, pred_each=pred_each)
 
             # If ellipse fitting is successful, i.e. an ellipse is located, AND gaze inference is DISABLED
             elif (centre is not None) and (not self.infer_gaze_flag):
-                positions, gaze_angles, inference_confidence = None, None, None
+                pos_xyz, gaze_angles, inference_confidence = None, None, None
                 self.vid_manager.write_results(frame_id=frame, pupil2D_x=centre[0], pupil2D_y=centre[1], gaze_x=np.nan,
                                                gaze_y=np.nan, confidence=ellipse_confidence, consistence=np.nan)
                 if self.vid_manager.output_video_flag:
@@ -289,7 +295,7 @@ class gaze_inferer(object):
             # IF ellipse fitting is unsuccessful.
             else:
                 # If ellipse cannot be found, fill the outputs with None's
-                positions, gaze_angles, inference_confidence = None, None, None
+                pos_xyz, gaze_angles, inference_confidence = None, None, None
 
                 self.vid_manager.write_results(frame_id=frame, pupil2D_x=np.nan, pupil2D_y=np.nan, gaze_x=np.nan,
                                                gaze_y=np.nan, confidence=np.nan, consistence=np.nan)
@@ -298,7 +304,7 @@ class gaze_inferer(object):
                 if self.vid_manager.output_video_flag:
                     self.vid_manager.write_frame_with_condition(vid_frame=vid_frame, pred_each=pred_each)
 
-        return positions, gaze_angles, inference_confidence
+        return pos_xyz, gaze_angles, inference_confidence
 
     def _get_video_info(self, video_src):
         video_name_with_ext = os.path.split(video_src)[1]
@@ -318,6 +324,7 @@ class gaze_inferer(object):
             else:
                 pass
         except AssertionError as e:
+            raise 
             print(
                 "3D eyeball mode is not found. Gaze inference cannot continue. Please fit/load an eyeball model first")
             raise e
