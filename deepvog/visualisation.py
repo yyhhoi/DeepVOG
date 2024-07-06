@@ -111,18 +111,15 @@ def draw_circle(output_frame, frame_shape, centre, radius, color=[255, 0, 0]):
     return output_frame
 
 
+
 class VideoManager:
-    def __init__(self, vreader, output_record_path="", output_video_path="", heatmap=False):
+    def __init__(self, vreader, output_video_path="", heatmap=False):
         # Parameters
         self.vreader = vreader
         self.heatmap = heatmap
         self.output_video_flag = True if output_video_path else False
-        self.output_record_flag = True if output_record_path else False
         self.vwriter = skv.FFmpegWriter(output_video_path) if self.output_video_flag else None
-        self.results_recorder = open(output_record_path, "w") if self.output_record_flag else None
 
-        # Initialization actions
-        self._initialize_results_recorder()
 
     def write_frame_with_condition(self, vid_frame, pred_each):
 
@@ -135,18 +132,8 @@ class VideoManager:
         else:
             self.vwriter.writeFrame(vid_frame)
 
-    def write_results(self, frame_id, pupil2D_x, pupil2D_y, gaze_x, gaze_y, confidence, consistence):
-        self.results_recorder.write("%d,%f,%f,%f,%f,%f,%f\n" % (frame_id, pupil2D_x, pupil2D_y,
-                                                                gaze_x, gaze_y,
-                                                                confidence, consistence))
-
-    def _initialize_results_recorder(self):
-        if self.output_record_flag:
-            self.results_recorder.write("frame,pupil2D_x,pupil2D_y,gaze_x,gaze_y,confidence,consistence\n")
 
     def __del__(self):
         self.vreader.close()
         if self.vwriter:
             self.vwriter.close()
-        if self.results_recorder:
-            self.results_recorder.close()

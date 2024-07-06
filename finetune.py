@@ -2,11 +2,11 @@
 File: finetune.py
 Author: Yuk-Hoi Yiu
 Description: 
-    Example script demonstrating how to fine-tune or retrain the model, based on procedures detailed in Yiu et al., 2019.
-    MLflow tracking and logging are included. 
-    Validation, hyperparameter search, testing and storing checkpoints are not covered in the script.
+    This is a minimal example script to show how to fine-tune or retrain the model, based on procedures detailed in Yiu et al., 2019.
+    The actual training script used in the paper was unfortunately lost.
+    MLflow tracking and logging are included. Validation, hyperparameter search, testing and storing checkpoints are not covered in this script.
 Usage:
-    See fine_tune().
+    See fine_tune(...).
 """
 from deepvog.model.DeepVOG_model import DeepVOG_net
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
@@ -67,13 +67,17 @@ def fine_tune(model_weights: str, data_dir:str, save_model_weights: str, batch_s
         data_dir/images should contain (240, 320, 3) .png/.jpg images with rgb channels.
         data_dir/masks should contain (240, 320, 3) .png/.jpg images with rgb channels. where all values are 0, except the second channel mask[:, :, 1] has
         values 255 segmented areas (converted to 1.0 as the label in keras). The names must correspond to the images in data_dir/images
+    
     save_model_weights : str
         Path to save the model weights. The filename should end with ".weights.h5"
+    
     batch_size : int, optional
     epochs : int, optional
     lr : float, optional
+    
     mlflow_tracking_uri : str or None, optional
         Disable MLflow tracking by setting it to None. 
+    
     mlflow_log_model : bool, optional
     """
     
@@ -138,13 +142,13 @@ def fine_tune(model_weights: str, data_dir:str, save_model_weights: str, batch_s
         mlflow.end_run()
 
 if __name__ == '__main__':
+
     fine_tune(model_weights='deepvog/model/DeepVOG_weights.h5',
               data_dir='data',
               save_model_weights='DeepVOG_finetuned.weights.h5',
               batch_size=2,
               epochs=5, 
               lr = 0.0001,
-            #   mlflow_tracking_uri='http://host.docker.internal:8080',
-              mlflow_tracking_uri = None,
+              mlflow_tracking_uri = None,  # Disable mlflow tracking. Enter your own MLflow tracking uri.
               mlflow_log_model = False)
             

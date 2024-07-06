@@ -56,6 +56,24 @@ def csv_reader(csv_path):
                 col_dict[header].append(value.strip())
     return col_dict
 
+class ResultRecorder:
+    def __init__(self, output_record_path=None):
+        self.output_record_path = output_record_path
+        self.text_writer = open(output_record_path, "w") if self.output_record_path else None
+        self._initialize_results_recorder()
+
+    def _initialize_results_recorder(self):
+        if self.output_record_path:
+            self.text_writer.write("frame,pupil2D_x,pupil2D_y,gaze_x,gaze_y,confidence,consistence\n")
+
+    def write_results(self, frame_id, pupil2D_x, pupil2D_y, gaze_x, gaze_y, confidence, consistence):
+        self.text_writer.write("%d,%f,%f,%f,%f,%f,%f\n" % (frame_id, pupil2D_x, pupil2D_y,
+                                                                gaze_x, gaze_y,
+                                                                confidence, consistence))
+        
+    def __del__(self):
+        if self.text_writer:
+            self.text_writer.close()
 
 if __name__ == "__main__":
     pass

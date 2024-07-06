@@ -6,7 +6,7 @@ from skimage.color import rgb2gray
 from skimage.transform import resize
 from .unprojection import reproject
 from .eyefitter import SingleEyeFitter
-from .utils import save_json, load_json, convert_vec2angle31
+from .utils import save_json, load_json, ResultRecorder
 from .visualisation import draw_circle, draw_ellipse, draw_line, VideoManager
 from numpy.typing import NDArray as npt
 # ===========================================
@@ -17,8 +17,8 @@ np.float = np.float64
 np.int = np.int_
 # ===========================================
 
-class gaze_inferer(object):
-    def __init__(self, model, flen, ori_video_shape, sensor_size, infer_gaze_flag=True):
+class GazeInferer(object):
+    def __init__(self, model, flen: float, ori_video_shape: tuple, sensor_size: tuple, infer_gaze_flag: bool=True):
         """Initialize necessary parameters for eye-sphere fitting, gaze inference and load the network model.
 
         Parameters
@@ -28,17 +28,13 @@ class gaze_inferer(object):
             The model should take input of grayscale image (m, 240, 320, 3) with value float [0,1] and output (m, 240, 320, 3) with value float [0,1] where (m, 240, 320, 1) is the pupil map.
         flen : float
             Focal length of camera in mm. You can look it up at the product menu of your camera
-        ori_video_shape : tuple or list or ndarray
+        ori_video_shape : tuple
             Original video shape from your camera video, (height, width) in pixel. If you cropped the video before, use the "original" shape but not the cropped shape. Video will be automatically resized to 240, 320 before feeding to the model.
-        sensor_size : tuple or list or ndarray
+        sensor_size : tuple
             Sensor size of your camera, (height, width) in mm. For 1/3 inch CMOS sensor, it should be (3.6, 4.8). Further reference can be found in https://en.wikipedia.org/wiki/Image_sensor_format and you can look up in your camera product menu
         infer_gaze_flag : bool, optional
             Enter False if you do not want to infer gaze direction (when you only perform pupil segmentation). By default True.
 
-        Raises
-        ------
-        TypeError
-            _description_
         """        
 
 
@@ -63,17 +59,18 @@ class gaze_inferer(object):
                                          initial_eye_z=50 * self.mm2px_scaling)
         self.infer_gaze_flag = infer_gaze_flag
 
-    def process(self, video_src, mode, output_record_path="", batch_size=32,
-                output_video_path="", heatmap=False, print_prefix="", ransac=True):
-        """
-
+    def process(self, video_src: str, mode: str, output_record_path: str ="", batch_size: int =32,
+                output_video_path: str="", heatmap: bool=False, print_prefix: str ="", ransac: bool=False):
+        """ Fit an eyeball model, or infer gaze angles based on an existing eyeball model.
+        
         Parameters
         ----------
         video_src : str
             Path of the video from which you want to (1) fit the eyeball model or (2) infer the gaze.
         mode : str
             There are two modes: "Fit" or "Infer". "Fit" will fit an eyeball model from the video source.
-            "Infer" will infer the gaze from the video source.
+            "Infer" will infer the gaze from the video source, unless self.infer_gaze_flag is set to False.
+            In this case, only pupil segmentation is performed and the result is stored as a heatmap. (see the argument "heatmap").
         batch_size : int
             Batch size. Recommended >= 32.
         output_record_path : str
@@ -86,6 +83,8 @@ class gaze_inferer(object):
             If True, show heatmap in the visualization video. If False, no heatmap will be shown.
         print_prefix : str
             What to print before the progress text.
+        ransac : bool
+            Whether to enable RANSAC for robust fitting or not. Only relevant for fitting, not inference. Default False.
 
         Returns
         -------
@@ -96,8 +95,9 @@ class gaze_inferer(object):
         video_name_root, ext, vreader, vid_shapes, shape_correct, image_scaling_factor = self._get_video_info(video_src)
         (vid_m, vid_w, vid_h, vid_channels) = vid_shapes
 
-        self.vid_manager = VideoManager(vreader=vreader, output_record_path=output_record_path,
+        self.vid_manager = VideoManager(vreader=vreader,
                                         output_video_path=output_video_path, heatmap=heatmap)
+        self.result_recorder = ResultRecorder(output_record_path=output_record_path)
 
         # (predict) Check if the eyeball model is imported
         if mode == "Infer":
@@ -128,7 +128,7 @@ class gaze_inferer(object):
 
             # After reaching the batch size, but not the final batch, predict heatmap and fit/infer angles
             elif (mini_batch_idx == 0) and (idx < final_batch_idx) or (idx == final_batch_idx):
-                Y_batch = self.model.predict(X_batch)
+                Y_batch = self.model.predict(X_batch, verbose=0)
                 if mode == "Fit":
                     self._fitting_batch(X_batch=X_batch,
                                         Y_batch=Y_batch)
@@ -148,7 +148,7 @@ class gaze_inferer(object):
             # Within the final batch and reaching the last index, predict heatmap and fit/infer angles
             elif idx == final_frame - 1:
                 X_batch_final[idx - final_batch_idx, :, :, :] = frame_preprocessed
-                Y_batch = self.model.predict(X_batch_final)
+                Y_batch = self.model.predict(X_batch_final, verbose=0)
                 if mode == "Fit":
                     self._fitting_batch(X_batch=X_batch_final,
                                         Y_batch=Y_batch)
@@ -159,7 +159,7 @@ class gaze_inferer(object):
 
         if mode == "Fit":
             # Fit eyeball models. Parameters are stored as internal attributes of Eyefitter instance.
-            _ = self.eyefitter.fit_projected_eye_centre(ransac=ransac, max_iters=100, min_distance=10*vid_m)
+            _ = self.eyefitter.fit_projected_eye_centre(ransac=ransac, max_iters=100, min_distance=10*vid_m*20)
             _, _ = self.eyefitter.estimate_eye_sphere()
 
             # Issue error if eyeball model still does not exist after fitting.
@@ -167,7 +167,7 @@ class gaze_inferer(object):
                 raise TypeError("Eyeball model was not fitted. You may need -v or -m argument to check whether the pupil segmentation works properly.")
         print()
 
-    def save_eyeball_model(self, path):
+    def save_eyeball_model(self, path: str):
         """
         Save eyeball model parameters in json format.
 
@@ -183,7 +183,7 @@ class gaze_inferer(object):
                          "aver_eye_radius": self.eyefitter.aver_eye_radius}
             save_json(path, save_dict)
 
-    def load_eyeball_model(self, path):
+    def load_eyeball_model(self, path: str):
         """
         Load eyeball model parameters of json format from path.
 
@@ -198,7 +198,16 @@ class gaze_inferer(object):
         self.eyefitter.aver_eye_radius = loaded_dict["aver_eye_radius"]
 
 
-    def _fitting_batch(self, X_batch, Y_batch):
+    def _fitting_batch(self, X_batch: npt, Y_batch: npt) -> None:
+        """Fit an eyeball model and write the visualization video. 
+
+        Parameters
+        ----------
+        X_batch : ndarray
+            (M, 240, 320, 3) with float [0, 1]. Direct DeepVOG model input, for writing the visualization video.
+        Y_batch : ndarray
+            (M, 240, 320, 3) with float [0, 1]. Direct DeepVOG model output, for eyeball model fitting.
+        """
 
         if self.vid_manager.output_video_flag:
             # Convert video frames to 8 bit integer format for drawing the output video frames
@@ -237,7 +246,17 @@ class gaze_inferer(object):
                     self.vid_manager.write_frame_with_condition(vid_frame=vid_frame, pred_each=pred_each)
 
     def _infer_batch(self, X_batch, Y_batch, idx):
+        """Infer gaze direction and append to the csv result file. Also draw the visualization video.
 
+        Parameters
+        ----------
+        X_batch : ndarray
+            (M, 240, 320, 3) with float [0, 1]. Direct DeepVOG model input, for writing the visualization video.
+        Y_batch : ndarray
+            (M, 240, 320, 3) with float [0, 1]. Direct DeepVOG model output, for eyeball model fitting.
+        idx : int
+            Frame index in the csv result file.
+        """
         if self.vid_manager.output_video_flag:
             # Convert video frames to 8 bit integer format for drawing the output video frames
             video_frames_batch = np.around(X_batch * 255).astype(int)
@@ -258,7 +277,7 @@ class gaze_inferer(object):
 
                 pos_xyz, gaze_angles, gaze_vec, consistence = self.eyefitter.estimate_gaze()
                 inference_confidence = (ellipse_confidence, consistence)
-                self.vid_manager.write_results(frame_id=frame, pupil2D_x=centre[0], pupil2D_y=centre[1], gaze_x=gaze_angles[0],
+                self.result_recorder.write_results(frame_id=frame, pupil2D_x=centre[0], pupil2D_y=centre[1], gaze_x=gaze_angles[0],
                                                gaze_y=gaze_angles[1], confidence=ellipse_confidence, consistence=consistence)
 
                 if self.vid_manager.output_video_flag:
@@ -279,7 +298,7 @@ class gaze_inferer(object):
             # If ellipse fitting is successful, i.e. an ellipse is located, AND gaze inference is DISABLED
             elif (centre is not None) and (not self.infer_gaze_flag):
                 pos_xyz, gaze_angles, inference_confidence = None, None, None
-                self.vid_manager.write_results(frame_id=frame, pupil2D_x=centre[0], pupil2D_y=centre[1], gaze_x=np.nan,
+                self.result_recorder.write_results(frame_id=frame, pupil2D_x=centre[0], pupil2D_y=centre[1], gaze_x=np.nan,
                                                gaze_y=np.nan, confidence=ellipse_confidence, consistence=np.nan)
                 if self.vid_manager.output_video_flag:
                     ellipse_centre_np = np.array(centre)
@@ -297,7 +316,7 @@ class gaze_inferer(object):
                 # If ellipse cannot be found, fill the outputs with None's
                 pos_xyz, gaze_angles, inference_confidence = None, None, None
 
-                self.vid_manager.write_results(frame_id=frame, pupil2D_x=np.nan, pupil2D_y=np.nan, gaze_x=np.nan,
+                self.result_recorder.write_results(frame_id=frame, pupil2D_x=np.nan, pupil2D_y=np.nan, gaze_x=np.nan,
                                                gaze_y=np.nan, confidence=np.nan, consistence=np.nan)
 
                 # Draw original input frame when no ellipse is found
@@ -324,7 +343,6 @@ class gaze_inferer(object):
             else:
                 pass
         except AssertionError as e:
-            raise 
             print(
                 "3D eyeball mode is not found. Gaze inference cannot continue. Please fit/load an eyeball model first")
             raise e

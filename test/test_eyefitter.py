@@ -18,7 +18,7 @@ class TestSingleEyeFitter(unittest.TestCase):
     def test_unproject_single_observation(self):
 
         
-        test_data = np.load('test/test_data/testdata_unproject_single_observation.npz')
+        test_data = np.load('test/test_data/eyefitter/testdata_unproject_single_observation.npz')
         gpos, gneg, cpos, cneg, (rr, cc, center, w, h, radian, confidence) = self.eyefitter.unproject_single_observation(test_data['input_prediction'])
         np.testing.assert_array_almost_equal(gpos, test_data['output_gpos'], decimal=6)
         np.testing.assert_array_almost_equal(gneg, test_data['output_gneg'], decimal=6)
@@ -33,7 +33,7 @@ class TestSingleEyeFitter(unittest.TestCase):
         self.assertAlmostEqual(confidence, test_data['output_confidence'])
 
     def test_estimate_eye_sphere(self):
-        predictions = np.load('test/test_data/testdata_batched_subsampled_predictions.npy')
+        predictions = np.load('test/test_data/eyefitter/testdata_batched_subsampled_predictions.npy')
         
         vid_m = predictions.shape[0]
         for i in range(vid_m):
@@ -54,7 +54,7 @@ class TestSingleEyeFitter(unittest.TestCase):
         self.assertAlmostEqual(self.eyefitter.aver_eye_radius, expected_aver_eye_radius)
 
         # # Test gaze estimation
-        expected_gazeinfos = np.load('test/test_data/testdata_calc_gaze.npy')
+        expected_gazeinfos = np.load('test/test_data/eyefitter/testdata_calc_gaze.npy')
         gazeinfos = np.zeros((vid_m, 8))
         for i in range(vid_m):
             _, _, _, _, ellipse_info = self.eyefitter.unproject_single_observation(predictions[i, ...])

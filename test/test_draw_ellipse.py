@@ -5,7 +5,7 @@ from deepvog.draw_ellipse import fit_ellipse
 class TestDrawEllipse(unittest.TestCase):
 
     def test_fit_ellipse(self):
-        test_data = np.load('test/test_data/testdata_draw_ellipse.npz', allow_pickle=True)
+        test_data = np.load('test/test_data/draw_ellipse/testdata_draw_ellipse.npz', allow_pickle=True)
         
         rr, cc, center, w, h, radian, _ = fit_ellipse(test_data['input_img'], 0.5, 'r', None)
 

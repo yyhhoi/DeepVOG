@@ -1,65 +1,131 @@
 import os
 import traceback
 from .model.DeepVOG_model import load_DeepVOG
-from .inferer import gaze_inferer
-from ast import literal_eval
+from .inferer import GazeInferer
 from .utils import csv_reader
 
 
-class deepvog_jobman_CLI(object):
-    def __init__(self, gpu_num, flen, ori_video_shape, sensor_size, batch_size):
-        """
-        
-        Args:
-            gpu_num (str)
-            flen (float)
-            ori_video_shape (tuple)
-            sensor_size (tuple)
-            batch_size (int)
-        
+class deepvog_jobman_CLI():
+    def __init__(self, gpu_id: str, flen: float, ori_video_shape: tuple, sensor_size: tuple, batch_size: int):
+        """Fit an eyeball model or infer gaze based on the CLI arguments. A wrapper for the GazerInferer class.
+
+        Parameters
+        ----------
+        gpu_id : str
+            Id of your gpu device.
+        flen : float
+            Focal length of your camera in mm.
+        ori_video_shape : tuple
+            Original video shape from your camera. e.g. (240, 320).
+        sensor_size : tuple
+            CMOS Sensor size of your camera. e.g. (3.6, 4.8).
+        batch_size : int
+            Batch size for batch inference.
         """
         os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-        os.environ["CUDA_VISIBLE_DEVICES"] = gpu_num
+        os.environ["CUDA_VISIBLE_DEVICES"] = gpu_id
         self.model = load_DeepVOG()
         self.flen = float(flen)
         self.ori_video_shape = ori_video_shape
         self.sensor_size = sensor_size
         self.batch_size = batch_size
 
-    def fit(self, vid_path, output_json_path, output_video_path="", heatmap=False,
-            print_prefix=""):
+    def fit(self, vid_path: str, output_json_path: str, output_video_path: str="", heatmap: bool=False,
+            print_prefix: str="", ransac:bool = False) -> None:
+        """Fit a 3-D eyeball model (a .json file), which is necessary for gaze inference in the same video.
 
-        inferer = gaze_inferer(self.model, self.flen, self.ori_video_shape, self.sensor_size)
+        Parameters
+        ----------
+        vid_path : str
+            Source video on which the 3D eyeball model is fit.
+        output_json_path : str
+            Path to save your .json file after fitting the 3D eyeball model.
+        output_video_path : str, optional
+            Path to save the visualization video, where pupil ellipse and gaze vector are plotted. Ignored if = "".
+        heatmap : bool, optional
+            Whether to visualize the segmentation probability heat map in the visualization video, by default False
+        print_prefix : str, optional
+            Print out the progress. By default "".
+        ransac: bool
+            Enable RANSAC. By default False.
+        """
+
+        inferer = GazeInferer(self.model, self.flen, self.ori_video_shape, self.sensor_size)
         inferer.process(video_src=vid_path, mode="Fit", batch_size=self.batch_size, output_video_path=output_video_path,
-                        heatmap=heatmap, print_prefix=print_prefix)
+                        heatmap=heatmap, print_prefix=print_prefix, ransac=ransac)
         inferer.save_eyeball_model(output_json_path)
 
-    def infer(self, vid_path, eyeball_model_path, output_record_path, output_video_path="", heatmap=False,
-              infer_gaze_flag=True, print_prefix=""):
-        if isinstance(infer_gaze_flag, str):
-            try:
-                infer_gaze_flag = int(infer_gaze_flag)
-            except ValueError:
-                infer_gaze_flag = False
+    def infer(self, vid_path: str, eyeball_model_path: str, output_record_path: str, output_video_path: str="", heatmap: str=False,
+              infer_gaze_flag: str=True, print_prefix: str="") -> None:
+        """Infer gaze direction from the video (a .mp4 file) and the 3-D eyeball model (a .json file produced by .fit() function).
 
-        inferer = gaze_inferer(self.model, self.flen, self.ori_video_shape, self.sensor_size,
+
+        Parameters
+        ----------
+        vid_path : str
+            Source video on which the 3D eyeball model is fit.
+        eyeball_model_path : str
+            A .json Eyeball model file to be used for gaze inference.
+        output_record_path : str
+            Path to save the gaze inference result as a .csv file.
+        output_video_path : str, optional
+            Path to save the visualization video, where pupil ellipse and gaze vector are plotted. Ignored if = "".
+        heatmap : bool, optional
+            Whether to visualize the segmentation probability heat map in the visualization video, by default False
+        infer_gaze_flag : bool, optional
+            Whether to infer the gaze angles. Set it to False if you just want pupil segmenetation. By default True
+        print_prefix : str, optional
+            Print out the progress. By default ""
+        """
+
+        inferer = GazeInferer(self.model, self.flen, self.ori_video_shape, self.sensor_size,
                                infer_gaze_flag=infer_gaze_flag)
         if infer_gaze_flag:
             inferer.load_eyeball_model(eyeball_model_path)
+
         inferer.process(video_src=vid_path, mode="Infer", batch_size=self.batch_size,
                         output_record_path=output_record_path, output_video_path=output_video_path, heatmap=heatmap,
                         print_prefix=print_prefix)
 
 
 class deepvog_jobman_table_CLI(deepvog_jobman_CLI):
-    def __init__(self, csv_path, gpu_num, flen, ori_video_shape, sensor_size, batch_size,
-                 skip_errors=False, skip_existed=False, error_log_path=""):
+    def __init__(self, csv_path: str, gpu_id: str, flen: float, ori_video_shape: tuple[int, int], 
+                 sensor_size: tuple[float, float], batch_size: int, ransac:bool = False,
+                 skip_errors: bool = False, skip_existed: bool = False, error_log_path:str = ""):
+        """ Fit or Infer based on a csv file which outlines a list of operations and parameters. 
+        After creating the instance, call the method self.run_batch() to start the job.
+
+        Parameters
+        ----------
+        csv_path : str
+            Path to the csv file which defines a list of fitting/inference operations.
+        gpu_id : str
+            Id of your gpu device.
+        flen : float
+            Focal length of your camera in mm.
+        ori_video_shape : tuple
+            Original video shape from your camera. e.g. (240, 320).
+        sensor_size : tuple
+            CMOS Sensor size of your camera. e.g. (3.6, 4.8).
+        batch_size : int
+            Batch size for batch inference.
+        skip_errors : bool, optional
+            If True, continue to the next operation if error is encountered. By default, False.
+        skip_existed : bool, optional
+            If True, skip operation with existing output files. By default False.
+        error_log_path : str, optional
+            Path to log the encountered errors. By default "".
+        ransac: bool
+            Enable RANSAC. By default False.
+        """
         self.csv_dict = csv_reader(csv_path)
+        self.ransac = ransac
         self.skip_errors, self.skip_existed, self.error_log_path = skip_errors, skip_existed, error_log_path
-        super(deepvog_jobman_table_CLI, self).__init__(gpu_num, flen, ori_video_shape, sensor_size, batch_size)
+        super(deepvog_jobman_table_CLI, self).__init__(gpu_id, flen, ori_video_shape, sensor_size, batch_size)
         self._initialize_error_log()
 
-    def run_batch(self):
+    def run_batch(self) -> None:
+    
         num_operations = len(self.csv_dict['operation'])
         operation_counts = dict()
         for i in range(num_operations):
@@ -88,7 +154,7 @@ class deepvog_jobman_table_CLI(deepvog_jobman_CLI):
                 if current_operation == "fit":
                     self.fit(vid_path=self.csv_dict['fit_vid'][i],
                              output_json_path=self.csv_dict['eyeball_model'][i],
-                             print_prefix=progress)
+                             print_prefix=progress, ransac=self.ransac)
                 elif current_operation == "infer":
                     self.infer(vid_path=self.csv_dict['infer_vid'][i],
                                eyeball_model_path=self.csv_dict['eyeball_model'][i],
@@ -98,7 +164,7 @@ class deepvog_jobman_table_CLI(deepvog_jobman_CLI):
                 elif current_operation == "both":
                     self.fit(vid_path=self.csv_dict['fit_vid'][i],
                              output_json_path=self.csv_dict['eyeball_model'][i],
-                             print_prefix=progress)
+                             print_prefix=progress, ransac=self.ransac)
                     self.infer(vid_path=self.csv_dict['infer_vid'][i],
                                eyeball_model_path=self.csv_dict['eyeball_model'][i],
                                output_record_path=self.csv_dict['result'][i],
@@ -124,9 +190,9 @@ class deepvog_jobman_table_CLI(deepvog_jobman_CLI):
                     raise
 
     def _initialize_error_log(self):
+        # This function mainly serves to create and overwrite existing logs, and include some meta parameters.
+
         if self.error_log_path:
-            # This function mainly serves to create and overwrite existing logs
-            # (plus add some meta information for inspection)
             with open(self.error_log_path, "w") as fh:
                 opening_msg = "DEEPVOG ERROR LOG\n"
                 content = "Configurations:\nFLEN:{}\nOriginal video shape:{}\nSensor size:{}\nBatch size:{}\n".format(
