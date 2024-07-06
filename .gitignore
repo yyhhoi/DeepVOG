@@ -2,3 +2,7 @@
 */__pycache__
 deepvog/model/__pycache__
 gen_test_data.py
+settings.json
+data
+mlruns
+try.py
