@@ -60,9 +60,8 @@ class TestSingleEyeFitter(unittest.TestCase):
             _, _, _, _, ellipse_info = self.eyefitter.unproject_single_observation(predictions[i, ...])
             (rr, cc, centre, w, h, radian, ellipse_confidence) = ellipse_info
             if (centre is not None):
-                p_list, n_list, _, consistence = self.eyefitter.gen_consistent_pupil()
-                positions, gaze_angles = self.eyefitter.calc_gaze(p_list=p_list, n_list=n_list)
-                gazeinfos[i, :] = np.array(list(positions) + centre + list(gaze_angles) + [consistence * 1.0])
+                pos_xyz, gaze_angles, gaze_vec, consistence = self.eyefitter.estimate_gaze()
+                gazeinfos[i, :] = np.array(list(pos_xyz) + centre + list(gaze_angles) + [consistence * 1.0])
         np.testing.assert_array_almost_equal(gazeinfos, expected_gazeinfos, decimal=6)
 
 if __name__ == '__main__':
