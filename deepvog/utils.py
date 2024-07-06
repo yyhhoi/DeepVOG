@@ -1,11 +1,20 @@
 import numpy as np
 import json
+from numpy.typing import NDArray as npt
+import csv
 
+def convert_vec2angle31(n1: npt) -> list[float, float]:
+    """Convert gaze vector to gaze angle.
 
-def convert_vec2angle31(n1):
-    """
-    Inputs:
-        n1 = numpy array with shape (3,1)
+    Parameters
+    ----------
+    n1 : npt
+        Gaze vector. Numpy array with shape (3, 1)
+
+    Returns
+    -------
+    list[float, float]
+        Gaze angles in degrees along the x- and y-plane.
     """
     assert n1.shape == (3,1)
     n1 = n1/np.linalg.norm(n1)
@@ -35,19 +44,16 @@ def load_json(path):
     return json.loads(json_str)
 
 def csv_reader(csv_path):
-    col_dict = dict()
-    col_list = []
+
     with open(csv_path, "r") as fh:
-        for idx, line in enumerate(fh):
-            row = line.split(",")
-            row_stripped = list(map(lambda x : x.strip(), row))
-            if idx == 0:
-                for col in row_stripped:
-                    col_list.append(col)
-                    col_dict[str(col)] = []
-            else:
-                for col_idx, col in enumerate(row_stripped):
-                    col_dict[col_list[col_idx]].append(str(col))
+        reader = csv.reader(fh)
+        headers = next(reader)
+        print(headers)
+        headers = [header.strip() for header in headers]
+        col_dict = {header: [] for header in headers}
+        for row in reader:
+            for header, value in zip(headers, row):
+                col_dict[header].append(value.strip())
     return col_dict
 
 
