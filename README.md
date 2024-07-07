@@ -17,6 +17,7 @@ Yiu YH, Aboulatta M, Raiser T, Ophey L, Flanagin VL, zu Eulenburg P, Ahmadi SA. 
         - [Using Docker](#using-docker)
     - [Use DeepVOG as CLI](#use-deepvog-as-cli)
     - [Use DeepVOG as python module](#use-deepvog-as-python-module)
+- [Documentations](#documentations)
 - [Demo code](#demo-code)
 - [Limitations](#limitations)
 - [Annotation tools](#annotation-tools)
@@ -87,7 +88,7 @@ In addition, you will need to specify your camera parameters such as focal lengt
 ```
 $ python -m deepvog --fit /PATH/video_fit.mp4 /PATH/eyeball_model.json --flen 12 --vid-shape 240,320 --sensor 3.6,4.8 --batchsize 32 --gpu 0
 ```
-Please refer to [doc/documentation.md](doc/documentation.md) for the meaning of arguments and input/output formats. Alternatively, you can also type `$ python -m deepvog -h` for usage examples.
+
 
 
 ### Use DeepVOG as python module
@@ -118,6 +119,8 @@ inferer.save_eyeball_model("demo_model.json")
 inferer.load_eyeball_model("demo_model.json") 
 
 ```
+## Documentations
+Please refer to [doc/documentation.md](doc/documentation.md) for the CLI documentation and the required CSV table format. Alternatively, you can also type `$ python -m deepvog -h` for usage examples.
 
 
 ## Demo code
