@@ -56,28 +56,28 @@ The "operation" column should contain either fit/infer/both:
 
 """
 
-fit_help = "Fitting an eyeball model. Call with --fit [video_src_path] [eyeball_model_saving_path]."
+fit_help = "Fitting an eyeball model. Call with --fit [video_src_path] [eyeball_model_saving_path]"
 infer_help = "Inter video from an eyeball model. The eyeball model is fitted using the --fit call. Call with --infer [video_scr_path] [eyeball_model_path] [results_saving_path]"
 table_help = "Fit or infer videos from a csv table. The column names of the csv must follow a format (see --help description). Call with --table [csv_path]"
 ori_vid_shape_help = "Original and uncropped video shape of your camera output, height and width in pixel. Default = (240, 320)"
-flen_help = "Focal length of your camera in mm."
-gpu_help = "GPU device number. Default = 0. Parallel processing is not supported."
+flen_help = "Focal length of your camera in mm. Default = 6"
+gpu_help = "GPU device number. Default = 0. Parallel processing is not supported"
 sensor_help = "Sensor size of your camera digital sensor, height and width in mm. Default = (3.6, 4.8)"
-batch_help = "Batch size for forward inference. Default = 512."
+batch_help = "Batch size for forward inference. Default = 512"
 visualize_help = "Draw the visualization of ellipse fitting and gaze vector. Call with --visualize [video_output_path]. (Not yet available with --table mode)"
 heatmap_help = "Show network's output of segmented pupil heatmap in visualization. Call with --heatmap. (Not yet available with --table mode)"
-skip_existed_help = "Available only in table mode. If activated, opetation with existing output paths will be skipped. " 
-skip_errors_help = "Available only in table mode. Skip the operation and continue to the next if an error is encountered. Useful if you do not want the job be interrupted by errors."
-log_errors_help = "Available only in table mode. Log the encountered errors in a txt file for each table-mode job. Call with --log_errors [output_file]."
-no_gaze_help = "If activated, no gaze inference is performed, infer-mode job does not required an eyeball model. Useful if you just want to use pupil segmentation without infering the gaze. "
-ransac_help = "Enable RANSAC for robust eyeball fitting. Default = True."
+skip_existed_help = "Available only in table mode. If activated, opetation with existing output paths will be skipped" 
+skip_errors_help = "Available only in table mode. Skip the operation and continue to the next if an error is encountered. Useful if you do not want the job be interrupted by errors"
+log_errors_help = "Available only in table mode. Log the encountered errors in a txt file for each table-mode job. Call with --log_errors [output_file]"
+no_gaze_help = "If activated, no gaze inference is performed. infer-mode job does not required an eyeball model. Useful if you just want to use pupil segmentation without infering the gaze"
+ransac_help = "Enable RANSAC for robust eyeball fitting. Default = True"
 
 parser = argparse.ArgumentParser(description=description_text, formatter_class=RawTextHelpFormatter)
 required = parser.add_argument_group("required arguments")
 required.add_argument("--fit", help=fit_help, nargs=2, type=str, metavar=("PATH", "PATH"))
 required.add_argument("--infer", help=infer_help, nargs=3, type=str, metavar=("PATH", "PATH", "PATH"))
 required.add_argument("--table", help=table_help, type=str, metavar=("PATH"))
-parser.add_argument("-f", "--flen", help=flen_help, default=12, type=float, metavar=("FLOAT"))
+parser.add_argument("-f", "--flen", help=flen_help, default=6, type=float, metavar=("FLOAT"))
 parser.add_argument("-g", "--gpu", help=gpu_help, default="0", type=str, metavar=("INT"))
 parser.add_argument("-vs", "--vidshape", help=ori_vid_shape_help, default="(240, 320)", type=str, metavar=("INT,INT"))
 parser.add_argument("-s", "--sensor", help=sensor_help, default="(3.6, 4.8)", type=str, metavar=("FLOAT,FLOAT"))
@@ -88,11 +88,10 @@ parser.add_argument("--skip_existed", help=skip_existed_help, default=False, act
 parser.add_argument("--skip_errors", help=skip_errors_help, default=False, action="store_true")
 parser.add_argument("--log_errors", help=log_errors_help, type=str, default="", metavar=("PATH"))
 parser.add_argument("--no_gaze", help=no_gaze_help, default=True, action="store_false")
-parser.add_argument("--ransac", help=no_gaze_help, default=True, action="store_true")
+parser.add_argument("--ransac", help=ransac_help, default=True, action="store_true")
 
 args = parser.parse_args()
 
-breakpoint()
 
 # Check there is EXACTLY one argument from --fit, --infer and --table
 all_modes_list = [args.fit, args.infer, args.table]

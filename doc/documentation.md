@@ -22,6 +22,7 @@ Although the default camera intrinsic parameters are given, they vary largely ac
 - `--skip_errors`: Flag for skipping the operation in `--table` mode and continue the next video if error is encountered. No argument is accepted.
 - `--log_errors`: Path that stores your logged error messages when you skip the error by `--skip_errors` in `--table` mode.
 - `--no_gaze`: Flag for enabling only pupil segmentation in `infer` mode, without gaze estimation. In this mode, eyeball model path will be ignored (model fitting is not needed). Output result will not contain any gaze information but pupil centre coordinates. No argument is accepted. 
+- `--ransac`: Enable RANSAC for robust eyeball fitting. Default = True
 
 ## Input/output format
 
