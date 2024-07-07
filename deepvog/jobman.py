@@ -51,8 +51,8 @@ class deepvog_jobman_CLI():
         """
 
         inferer = GazeInferer(self.model, self.flen, self.ori_video_shape, self.sensor_size)
-        inferer.process(video_src=vid_path, mode="Fit", batch_size=self.batch_size, output_video_path=output_video_path,
-                        heatmap=heatmap, print_prefix=print_prefix, ransac=ransac)
+        inferer.fit(video_src=vid_path, batch_size=self.batch_size, output_video_path=output_video_path, heatmap=heatmap,
+                    print_prefix=print_prefix, ransac=ransac)
         inferer.save_eyeball_model(output_json_path)
 
     def infer(self, vid_path: str, eyeball_model_path: str, output_record_path: str, output_video_path: str="", heatmap: str=False,
@@ -82,10 +82,8 @@ class deepvog_jobman_CLI():
                                infer_gaze_flag=infer_gaze_flag)
         if infer_gaze_flag:
             inferer.load_eyeball_model(eyeball_model_path)
-
-        inferer.process(video_src=vid_path, mode="Infer", batch_size=self.batch_size,
-                        output_record_path=output_record_path, output_video_path=output_video_path, heatmap=heatmap,
-                        print_prefix=print_prefix)
+        inferer.infer(video_src=vid_path, output_record_path=output_record_path, batch_size=self.batch_size, 
+                      output_video_path=output_video_path, heatmap=heatmap, print_prefix=print_prefix)
 
 
 class deepvog_jobman_table_CLI(deepvog_jobman_CLI):

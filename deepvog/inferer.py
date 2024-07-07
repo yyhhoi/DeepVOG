@@ -59,8 +59,73 @@ class GazeInferer(object):
                                          initial_eye_z=50 * self.mm2px_scaling)
         self.infer_gaze_flag = infer_gaze_flag
 
+
+    def fit(self, video_src: str, batch_size: int =32, output_video_path: str="", 
+            heatmap: bool=False, print_prefix: str ="", ransac: bool=False) -> None:
+        """ Fit an eyeball model from a video. Wrapper function for process() with mode="Fit".
+        
+        Parameters
+        ----------
+        video_src : str
+            Path of the video from which you want to fit the eyeball model.
+        batch_size : int
+            Batch size. Recommended >= 32.
+        output_video_path : str
+            Path of the output visualization video. Segmented pupil ellipse will be drawn on the video. 
+            If output_video_path == "" (by default), no visualization will be produced.
+        heatmap : bool
+            If True, show heatmap in the visualization video. The output video will be twice as wide. 
+            If False (by default), no heatmap will be shown.
+        print_prefix : str
+            What to print before the progress text.
+        ransac : bool
+            Whether to enable RANSAC for robust fitting or not. Default False. 
+            Note that RANSAC introduces randomness and may not always give the same result.
+
+        Returns
+        -------
+        None
+        """
+        self.process(video_src=video_src, mode="Fit", batch_size=batch_size, output_video_path=output_video_path, 
+                     heatmap=heatmap, print_prefix=print_prefix, ransac=ransac)
+
+    def infer(self, video_src: str, output_record_path: str ="", batch_size: int =32, output_video_path: str="",
+              heatmap: bool=False, print_prefix: str ="") -> None:
+        
+        """ Infer gaze angles based on an existing eyeball model. Wrapper function for process() with mode="Infer".
+        Usage:
+            inferer.fit(...)  # After fitting, the eyeball model will be stored as the "inferer" instance's attribute.
+            inferer.infer(...)  # Infer gaze angles from the video source. 
+
+        
+        Parameters
+        ----------
+        video_src : str
+            Path of the video from which you want to infer the gaze.
+        output_record_path : str
+            Path of the csv file where you store the gaze estimation result.
+        batch_size : int
+            Batch size. Recommended >= 32.
+        output_video_path : str
+            Path of the output visualization video. Segmented pupil ellipse and gaze vector will be drawn. 
+            If output_video_path == "" (by default), no visualization will be produced.
+        heatmap : bool
+            If True, show heatmap in the visualization video. If False, no heatmap will be shown.
+        print_prefix : str
+            What to print before the progress text.
+
+        Returns
+        -------
+        None
+
+        """
+
+        self.process(video_src=video_src, mode="Infer", output_record_path=output_record_path, batch_size=batch_size, 
+                     output_video_path=output_video_path, heatmap=heatmap, print_prefix=print_prefix)
+
+
     def process(self, video_src: str, mode: str, output_record_path: str ="", batch_size: int =32,
-                output_video_path: str="", heatmap: bool=False, print_prefix: str ="", ransac: bool=False):
+                output_video_path: str="", heatmap: bool=False, print_prefix: str ="", ransac: bool=False) -> None:
         """ Fit an eyeball model, or infer gaze angles based on an existing eyeball model.
         
         Parameters
@@ -398,3 +463,12 @@ class GazeInferer(object):
         vid_frame = draw_circle(output_frame=vid_frame, frame_shape=vid_frame_shape_2d,
                                 centre=ellipse_centre_np, radius=5, color=[0, 255, 0])
         return vid_frame
+
+
+
+
+class gaze_inferer(GazeInferer):
+    """
+    Alias class for GazeInferer for backward compatibility.
+    """
+    pass

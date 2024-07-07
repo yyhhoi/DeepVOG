@@ -23,7 +23,7 @@ class TestGazeInferer(unittest.TestCase):
         # Test that 
         #   (1) the fitted eyeball result can be successfully saved. i.e. inferer.save_eyeball_model() 
         #   (2) the fitted eyeball result is the same as the expected result. i.e. inferer.process(..., mode='Fit', ...)
-        self.inferer.process(self.input_video, mode="Fit", batch_size=2, ransac=False)
+        self.inferer.fit(video_src=self.input_video, batch_size=2, ransac=False)
         tmp_eyeball_pth = '%s.json'% str(uuid.uuid4())
         self.inferer.save_eyeball_model(tmp_eyeball_pth)
         expected_eyeball_model = load_json(self.expected_eyeball_model)
@@ -42,9 +42,8 @@ class TestGazeInferer(unittest.TestCase):
         self.inferer.load_eyeball_model(self.expected_eyeball_model)
 
         tmp_gaze_result_pth = '%s.csv'%(uuid.uuid4())
-        self.inferer.process(self.input_video, mode="Infer",
-                             output_record_path=tmp_gaze_result_pth,
-                            output_video_path="test_visualization.mp4", batch_size=2)
+        self.inferer.infer(video_src=self.input_video, batch_size=2, 
+                           output_record_path=tmp_gaze_result_pth, output_video_path="test_visualization.mp4")
         self.inferer.result_recorder.text_writer.close()
         predicted_gaze_results = csv_reader(tmp_gaze_result_pth)
 
