@@ -8,7 +8,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="deepvog",
-    version="1.2.1",
+    version="1.2.0.dev1",
     author="Yuk-Hoi Yiu",
     author_email="yyhhoi@gmail.com",
     description="Deep VOG for gaze estimation",

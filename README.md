@@ -40,7 +40,7 @@ Yiu YH, Aboulatta M, Raiser T, Ophey L, Flanagin VL, zu Eulenburg P, Ahmadi SA. 
 
 ```bash
 # Install DeepVOG via pip
-$ pip install -U deepvog
+$ pip install deepvog==1.2.0.dev1
 
 # Verify that it is installed. It should show the help document.
 $ python -m deepvog -h
@@ -58,12 +58,12 @@ $ docker build -t YOUR_IMAGE_NAME .
 ##### Pull from Docker Hub:
 The image is pre-built using the [Dockerfile](docker/Dockerfile) with deepvog pre-installed.
 ```bash
-$ docker pull yyhhoi/deepvog:v1.2.1
+$ docker pull yyhhoi/deepvog:v1.2.0.dev1
 ```
 
 ##### Run your Docker container:
 ```bash
-$ docker run -it --gpus=all yyhhoi/deepvog:v1.2.1 bash
+$ docker run -it --gpus=all yyhhoi/deepvog:v1.2.0.dev1 bash
 
 # deepvog package comes pre-installed
 $ python -m deepvog -h
