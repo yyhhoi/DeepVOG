@@ -286,57 +286,7 @@ class SingleEyeFitter(object):
 
 
 if __name__ == '__main__':
-
-    flen = 12
-    ori_video_shape, sensor_size = np.array((240, 320)).squeeze(), np.array((3.6, 4.8)).squeeze()
-    mm2px_scaling = np.linalg.norm(ori_video_shape) / np.linalg.norm(sensor_size)
-    confidence_fitting_threshold = 0.96
-    eyefitter = SingleEyeFitter(focal_length=flen * mm2px_scaling,
-                                        pupil_radius=2 * mm2px_scaling,
-                                        initial_eye_z=50 * mm2px_scaling,
-                                        image_shape=(240, 320))
-    
-    # # Test data for test_unproject_single_observation
-    # test_data = np.load('test/test_data/test_model_prediction.npy')
-    # prediction = test_data[0, :, :, 1]
-    # gpos, gneg, cpos, cneg, (rr, cc, center, w, h, radian, confidence) = eyefitter.unproject_single_observation(prediction)
-    # np.savez('test/test_data/testdata_unproject_single_observation.npz', 
-    #          input_prediction = prediction,
-    #          output_gpos=gpos,
-    #          output_gneg=gneg,
-    #          output_cpos=cpos,
-    #          output_cneg=cneg,
-    #          output_rr=rr, output_cc=cc, output_center=center, output_w=w, output_h=h, output_radian=radian, output_confidence=confidence)
-
-
-    # # Test data for test_estimate_eye_sphere
-    predictions = np.load('test/test_data/testdata_batched_subsampled_predictions.npy')
-    
-    vid_m = predictions.shape[0]
-    for i in range(vid_m):
-        _, _, _, _, ellipse_info = eyefitter.unproject_single_observation(predictions[i, ...])
-        (rr, cc, centre, w, h, radian, ellipse_confidence) = ellipse_info
-        if centre is not None:
-            if (ellipse_confidence > confidence_fitting_threshold):
-                eyefitter.add_to_fitting()
-    # _ = eyefitter.fit_projected_eye_centre(ransac=True, max_iters=5000, min_distance=10*vid_m*20)
-    _ = eyefitter.fit_projected_eye_centre(ransac=False)
-    _, _ = eyefitter.estimate_eye_sphere()
-    print('Projected eye center\n', eyefitter.projected_eye_centre)
-    print('3D Eye center\n', eyefitter.eye_centre)
-    print('Eye radius\n', eyefitter.aver_eye_radius)
-
-    # # Test data for test_calc_gaze
-    testdata = np.zeros((vid_m, 8))
-    for i in range(vid_m):
-        _, _, _, _, ellipse_info = eyefitter.unproject_single_observation(predictions[i, ...])
-        (rr, cc, centre, w, h, radian, ellipse_confidence) = ellipse_info
-        if (centre is not None):
-            p_list, n_list, _, consistence = eyefitter.gen_consistent_pupil()
-            positions, gaze_angles = eyefitter.calc_gaze(p_list=p_list, n_list=n_list)
-            testdata[i, :] = np.array(list(positions) + centre + list(gaze_angles) + [consistence * 1.0])
-    np.save('test/test_data/testdata_calc_gaze.npy', testdata)
-
+    pass
 
 
 

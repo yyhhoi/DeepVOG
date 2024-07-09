@@ -3,10 +3,12 @@ File: finetune.py
 Author: Yuk-Hoi Yiu
 Description: 
     This is a minimal example script to show how to fine-tune or retrain the model, based on procedures detailed in Yiu et al., 2019.
-    The actual training script used in the paper was unfortunately lost.
     MLflow tracking and logging are included. Validation, hyperparameter search, testing and storing checkpoints are not covered in this script.
 Usage:
-    See fine_tune(...).
+    See fine_tune(...)
+Note:
+    The actual training script used in the paper was unfortunately lost. 
+    Therefore, the script here might not produce the same results. Please use with caution.
 """
 from deepvog.model.DeepVOG_model import DeepVOG_net
 from tensorflow.keras.preprocessing.image import ImageDataGenerator

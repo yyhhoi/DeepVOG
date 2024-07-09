@@ -94,7 +94,7 @@ $ python -m deepvog --fit /PATH/video_fit.mp4 /PATH/eyeball_model.json --flen 12
 ### Use DeepVOG as python module
 For more flexibility, you may import the module directly in python.
 
-Download [demo/demo.mp4](demo/demo.mp4) and run the script below.
+Run the script [demo.py](demp.py), which will fit a model and infer the gaze from [demo/demo.mp4](demo/demo.mp4).
 ```python
 import deepvog
 
@@ -102,21 +102,25 @@ import deepvog
 model = deepvog.load_DeepVOG()
 
 # Initialize the class. It requires information of your camera's focal length and sensor size, which should be available in product manual.
-inferer = deepvog.gaze_inferer(model, focal_length=12, video_shape=(240, 360), sensor_size=(3.6, 4.2)) 
+inferer = deepvog.GazeInferer(model, focal_length=12, video_shape=(240, 360), sensor_size=(3.6, 4.2)) 
 
 # Fit an eyeball model from "demo.mp4". The model will be stored as the "inferer" instance's attribute.
-inferer.fit("demo.mp4")
+input_video = 'demo/demo_video_subsampled.mp4'
+inferer.process(input_video, mode="Fit", batch_size=2, ransac=ransac)
+
 
 # After fitting, infer gaze from "demo.mp4" and output the results into "demo_result.csv"
-inferer.infer("demo.mp4", output_record_path="demo_results.csv")
+inferer.process(input_video, mode="Infer", 
+                output_record_path="demo/demo_output_results.csv", 
+                output_video_path="demo/demo_output_video.mp4", batch_size=2)
 
-# Optional
 
-# You may also save the eyeball model to "demo_model.json" for subsequent gaze inference
-inferer.save_eyeball_model("demo_model.json") 
+# You may save the eyeball model to "demo_model.json" for subsequent gaze inference
+eye_ball_model_path = "demo/fitted_eyeball_model.json"
+inferer.save_eyeball_model(eye_ball_model_path) 
 
-# By loading the eyeball model, you don't need to fit the model again
-inferer.load_eyeball_model("demo_model.json") 
+# By loading the eyeball model, you don't need to fit the model again, and can infer the gaze by calling inferer.process(mode='infer') directly.
+inferer.load_eyeball_model(eye_ball_model_path) 
 
 ```
 ## Documentations
